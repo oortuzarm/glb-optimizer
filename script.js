@@ -4,6 +4,7 @@
 let selectedSize = 1024;
 let optimizedBuf = null;
 let origFileName = '';
+let originalBuf  = null;
 
 const $ = id => document.getElementById(id);
 const dropzone   = $('dropzone');
@@ -21,6 +22,7 @@ document.querySelectorAll('.tex-opt').forEach(el => {
     document.querySelectorAll('.tex-opt').forEach(e => e.classList.remove('sel'));
     el.classList.add('sel');
     selectedSize = +el.dataset.size;
+    if (originalBuf) reoptimize();
   });
 });
 
@@ -41,7 +43,7 @@ $('dlBtn').addEventListener('click', () => {
 });
 
 $('rstBtn').addEventListener('click', () => {
-  optimizedBuf = null; fileInput.value = '';
+  optimizedBuf = null; originalBuf = null; fileInput.value = '';
   resCard.classList.remove('vis');
   statusCard.classList.remove('vis');
   errMsg.classList.remove('vis');
@@ -63,15 +65,26 @@ function fmtBytes(b) {
 async function processFile(file) {
   if (!/\.glb$/i.test(file.name)) { showErr('Por favor selecciona un archivo .GLB válido.'); return; }
   origFileName = file.name;
+  originalBuf  = await file.arrayBuffer();
+  await runOptimization();
+}
+
+async function reoptimize() {
+  resCard.classList.remove('vis');
+  errMsg.classList.remove('vis');
+  statusCard.classList.add('vis');
+  await runOptimization();
+}
+
+async function runOptimization() {
   dropzone.style.display = 'none';
   resCard.classList.remove('vis');
   errMsg.classList.remove('vis');
   statusCard.classList.add('vis');
-  setProgress(5, 'Leyendo archivo...', fmtBytes(file.size) + ' detectados');
+  setProgress(5, 'Leyendo archivo...', fmtBytes(originalBuf.byteLength) + ' detectados');
   try {
-    const buf = await file.arrayBuffer();
     setProgress(10, 'Analizando estructura GLB...', 'Parseando JSON y buffer binario');
-    const out = await optimizeGLB(buf, {
+    const out = await optimizeGLB(originalBuf, {
       textureSize: selectedSize,
       webpQuality: +$('webpSlider').value / 100,
       geoOpt: $('geoOpt').checked
@@ -79,15 +92,15 @@ async function processFile(file) {
     optimizedBuf = out;
     statusCard.classList.remove('vis');
     resCard.classList.add('vis');
-    $('origSz').textContent = fmtBytes(buf.byteLength);
+    $('origSz').textContent = fmtBytes(originalBuf.byteLength);
     $('optSz').textContent  = fmtBytes(out.byteLength);
-    const red = (buf.byteLength - out.byteLength) / buf.byteLength * 100;
+    const red = (originalBuf.byteLength - out.byteLength) / originalBuf.byteLength * 100;
     $('redPct').textContent = (red > 0 ? red.toFixed(1) : '0') + '%';
   } catch (err) {
     console.error(err);
     statusCard.classList.remove('vis');
     showErr('Error al optimizar: ' + (err.message || String(err)));
-    dropzone.style.display = '';
+    if (!optimizedBuf) dropzone.style.display = '';
   }
 }
 
