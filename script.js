@@ -97,7 +97,7 @@ async function runOptimization() {
   } catch (err) {
     console.error(err);
     statusCard.classList.remove('vis');
-    showErr('Error al optimizar: ' + (err.message || String(err)));
+    showErr('Error al optimizar: ' + (err instanceof Error ? err.message : 'Error desconocido. Revisa la consola.'));
     if (!optimizedBuf) dropzone.style.display = '';
   }
 }
@@ -259,17 +259,21 @@ function rebuildBin(json, oldBin, patches) {
 //  Draco encoder
 // ─────────────────────────────────────────────────────────
 let _dracoModule = null;
+const DRACO_CDN = 'https://cdn.jsdelivr.net/npm/draco3d@1.5.6';
 
 async function loadDracoEncoder() {
   if (_dracoModule) return _dracoModule;
   await new Promise((res, rej) => {
     const s = document.createElement('script');
-    s.src = 'https://cdn.jsdelivr.net/npm/draco3d@1.5.7/draco_encoder.js';
-    s.onload = res; s.onerror = rej;
+    s.src = `${DRACO_CDN}/draco_encoder.js`;
+    s.onload = res;
+    s.onerror = () => rej(new Error('No se pudo cargar el encoder Draco. Verifica tu conexión a internet.'));
     document.head.appendChild(s);
   });
+  if (typeof DracoEncoderModule === 'undefined')
+    throw new Error('El encoder Draco no se inicializó correctamente.');
   _dracoModule = await DracoEncoderModule({
-    locateFile: f => `https://cdn.jsdelivr.net/npm/draco3d@1.5.7/${f}`
+    locateFile: f => `${DRACO_CDN}/${f}`
   });
   return _dracoModule;
 }
