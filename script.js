@@ -259,22 +259,22 @@ function rebuildBin(json, oldBin, patches) {
 //  Draco encoder
 // ─────────────────────────────────────────────────────────
 let _dracoModule = null;
-const DRACO_CDN = 'https://cdn.jsdelivr.net/npm/draco3d@1.5.6';
 
 async function loadDracoEncoder() {
   if (_dracoModule) return _dracoModule;
   await new Promise((res, rej) => {
     const s = document.createElement('script');
-    s.src = `${DRACO_CDN}/draco_encoder.js`;
+    // asm.js build — self-contained, no .wasm dependency
+    s.src = 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/draco/draco_encoder.js';
     s.onload = res;
     s.onerror = () => rej(new Error('No se pudo cargar el encoder Draco. Verifica tu conexión a internet.'));
     document.head.appendChild(s);
   });
   if (typeof DracoEncoderModule === 'undefined')
     throw new Error('El encoder Draco no se inicializó correctamente.');
-  _dracoModule = await DracoEncoderModule({
-    locateFile: f => `${DRACO_CDN}/${f}`
-  });
+  // asm.js modules return the module directly (not a Promise)
+  const mod = DracoEncoderModule();
+  _dracoModule = (mod instanceof Promise) ? await mod : mod;
   return _dracoModule;
 }
 
