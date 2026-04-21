@@ -145,7 +145,7 @@ function packGLB(json, bin) {
 // ─────────────────────────────────────────────────────────
 //  Texture processing
 // ─────────────────────────────────────────────────────────
-async function toWebP(bytes, mime, maxPx, quality) {
+async function toJPEG(bytes, mime, maxPx, quality) {
   const url = URL.createObjectURL(new Blob([bytes], { type: mime || 'image/png' }));
   const img = await new Promise((res, rej) => {
     const i = new Image(); i.crossOrigin = 'anonymous';
@@ -161,9 +161,12 @@ async function toWebP(bytes, mime, maxPx, quality) {
   }
   const c = document.createElement('canvas');
   c.width = w; c.height = h;
-  c.getContext('2d').drawImage(img, 0, 0, w, h);
-  const blob = await new Promise(r => c.toBlob(r, 'image/webp', quality));
-  if (!blob) throw new Error('Este navegador no soporta exportar WebP');
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, w, h);
+  ctx.drawImage(img, 0, 0, w, h);
+  const blob = await new Promise(r => c.toBlob(r, 'image/jpeg', quality));
+  if (!blob) throw new Error('Error al convertir textura a JPEG');
   return new Uint8Array(await blob.arrayBuffer());
 }
 
@@ -245,13 +248,13 @@ async function optimizeGLB(buffer, { textureSize, webpQuality, geoOpt }) {
     setProgress(
       15 + Math.round(nth / Math.max(imgCount, 1) * 62),
       `Procesando textura ${nth} de ${imgCount}`,
-      `Redimensionando a ${textureSize}px · Convirtiendo a WebP`
+      `Redimensionando a ${textureSize}px · Convirtiendo a JPEG`
     );
     const bv = json.bufferViews[img.bufferView];
     const off = bv.byteOffset || 0;
     try {
-      imgNew[i] = await toWebP(binArr.slice(off, off + bv.byteLength), img.mimeType, textureSize, webpQuality);
-      json.images[i] = { ...img, mimeType: 'image/webp' };
+      imgNew[i] = await toJPEG(binArr.slice(off, off + bv.byteLength), img.mimeType, textureSize, webpQuality);
+      json.images[i] = { ...img, mimeType: 'image/jpeg' };
     } catch (e) { console.warn('Textura omitida:', e.message); }
     await new Promise(r => setTimeout(r, 0));
   }
