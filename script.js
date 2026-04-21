@@ -85,7 +85,6 @@ async function runOptimization() {
       textureSize: selectedSize,
       jpegQuality: +$('webpSlider').value / 100,
       geoOpt:  $('geoOpt').checked,
-      draco:   $('dracoOpt').checked,
     });
     optimizedBuf = out;
     statusCard.classList.remove('vis');
@@ -199,11 +198,6 @@ function usedBVSet(json) {
   const bvs = new Set();
   accs.forEach(i => { const a = json.accessors && json.accessors[i]; if (a && a.bufferView != null) bvs.add(a.bufferView); });
   (json.images || []).forEach(img => { if (img.bufferView != null) bvs.add(img.bufferView); });
-  // Draco compressed data bufferViews
-  (json.meshes || []).forEach(m => (m.primitives || []).forEach(p => {
-    const draco = p.extensions && p.extensions.KHR_draco_mesh_compression;
-    if (draco && draco.bufferView != null) bvs.add(draco.bufferView);
-  }));
   return bvs;
 }
 
@@ -219,12 +213,6 @@ function compactBVs(json, used) {
   (json.images || []).forEach(img => {
     if (img.bufferView != null && remap.has(img.bufferView)) img.bufferView = remapIdx(img.bufferView);
   });
-  // Remap Draco extension bufferViews
-  (json.meshes || []).forEach(m => (m.primitives || []).forEach(p => {
-    const draco = p.extensions && p.extensions.KHR_draco_mesh_compression;
-    if (draco && draco.bufferView != null && remap.has(draco.bufferView))
-      draco.bufferView = remapIdx(draco.bufferView);
-  }));
   const before = bvs.length;
   json.bufferViews = bvs.filter((_, i) => used.has(i));
   return { removed: before - json.bufferViews.length, remap };
@@ -255,141 +243,11 @@ function rebuildBin(json, oldBin, patches) {
   return buf.buffer;
 }
 
-// ─────────────────────────────────────────────────────────
-//  Draco encoder
-// ─────────────────────────────────────────────────────────
-let _dracoModule = null;
-
-async function loadDracoEncoder() {
-  if (_dracoModule) return _dracoModule;
-  await new Promise((res, rej) => {
-    const s = document.createElement('script');
-    // asm.js build — self-contained, no .wasm dependency
-    s.src = 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/draco/draco_encoder.js';
-    s.onload = res;
-    s.onerror = () => rej(new Error('No se pudo cargar el encoder Draco. Verifica tu conexión a internet.'));
-    document.head.appendChild(s);
-  });
-  if (typeof DracoEncoderModule === 'undefined')
-    throw new Error('El encoder Draco no se inicializó correctamente.');
-  // asm.js modules return the module directly (not a Promise)
-  const mod = DracoEncoderModule();
-  _dracoModule = (mod instanceof Promise) ? await mod : mod;
-  return _dracoModule;
-}
-
-const TYPE_COMP  = { SCALAR:1, VEC2:2, VEC3:3, VEC4:4, MAT2:4, MAT3:9, MAT4:16 };
-const COMP_BYTES = { 5120:1, 5121:1, 5122:2, 5123:2, 5125:4, 5126:4 };
-
-function readAccessorData(json, acc, binArray) {
-  const bv = json.bufferViews[acc.bufferView];
-  if (!bv) return new Float32Array(0);
-  const numComp  = TYPE_COMP[acc.type]  || 1;
-  const byteSize = COMP_BYTES[acc.componentType] || 4;
-  const bvOff    = bv.byteOffset  || 0;
-  const accOff   = acc.byteOffset || 0;
-  const stride   = bv.byteStride  || (numComp * byteSize);
-  const dv       = new DataView(binArray.buffer, binArray.byteOffset);
-  const result   = new Float32Array(acc.count * numComp);
-  for (let i = 0; i < acc.count; i++) {
-    const base = bvOff + accOff + i * stride;
-    for (let j = 0; j < numComp; j++) {
-      const o = base + j * byteSize;
-      let v;
-      switch (acc.componentType) {
-        case 5120: v = dv.getInt8(o);            break;
-        case 5121: v = dv.getUint8(o);           break;
-        case 5122: v = dv.getInt16(o, true);     break;
-        case 5123: v = dv.getUint16(o, true);    break;
-        case 5125: v = dv.getUint32(o, true);    break;
-        default:   v = dv.getFloat32(o, true);   break;
-      }
-      result[i * numComp + j] = v;
-    }
-  }
-  return result;
-}
-
-function readIndicesData(json, acc, binArray) {
-  const bv     = json.bufferViews[acc.bufferView];
-  const bvOff  = bv.byteOffset  || 0;
-  const accOff = acc.byteOffset || 0;
-  const byteSize = COMP_BYTES[acc.componentType] || 2;
-  const dv     = new DataView(binArray.buffer, binArray.byteOffset);
-  const result = new Uint32Array(acc.count);
-  for (let i = 0; i < acc.count; i++) {
-    const o = bvOff + accOff + i * byteSize;
-    switch (acc.componentType) {
-      case 5121: result[i] = dv.getUint8(o);          break;
-      case 5123: result[i] = dv.getUint16(o, true);   break;
-      default:   result[i] = dv.getUint32(o, true);   break;
-    }
-  }
-  return result;
-}
-
-function encodePrimitiveDraco(mod, json, prim, binArray) {
-  const meshBuilder = new mod.MeshBuilder();
-  const mesh        = new mod.Mesh();
-
-  // Faces
-  const indAcc  = json.accessors[prim.indices];
-  const indices = readIndicesData(json, indAcc, binArray);
-  const faceCount = Math.floor(indAcc.count / 3);
-  const facesArr  = new mod.DracoInt32Array();
-  facesArr.Resize(indAcc.count);
-  for (let i = 0; i < indAcc.count; i++) facesArr.SetValue(i, indices[i]);
-  meshBuilder.AddFacesToMesh(mesh, faceCount, facesArr);
-  mod.destroy(facesArr);
-
-  // Attributes
-  const attrIds = {};
-  for (const [name, accIdx] of Object.entries(prim.attributes)) {
-    const acc  = json.accessors[accIdx];
-    if (acc.bufferView == null) continue;
-    const data = readAccessorData(json, acc, binArray);
-    const nc   = TYPE_COMP[acc.type] || 3;
-    const arr  = new mod.DracoFloat32Array();
-    arr.Resize(data.length);
-    for (let i = 0; i < data.length; i++) arr.SetValue(i, data[i]);
-    let dracoType;
-    if      (name === 'POSITION')          dracoType = mod.POSITION;
-    else if (name === 'NORMAL')            dracoType = mod.NORMAL;
-    else if (name.startsWith('TEXCOORD_')) dracoType = mod.TEX_COORD;
-    else if (name.startsWith('COLOR_'))    dracoType = mod.COLOR;
-    else                                   dracoType = mod.GENERIC;
-    attrIds[name] = meshBuilder.AddFloatAttributeToMesh(mesh, dracoType, acc.count, nc, arr);
-    mod.destroy(arr);
-  }
-
-  // Encode
-  const encoder = new mod.Encoder();
-  encoder.SetSpeedOptions(5, 5);
-  encoder.SetAttributeQuantization(mod.POSITION,  14);
-  encoder.SetAttributeQuantization(mod.NORMAL,    10);
-  encoder.SetAttributeQuantization(mod.TEX_COORD, 12);
-  encoder.SetAttributeQuantization(mod.COLOR,      8);
-  encoder.SetAttributeQuantization(mod.GENERIC,    8);
-  encoder.SetEncodingMethod(mod.MESH_EDGEBREAKER_ENCODING);
-
-  const encodedData = new mod.DracoInt8Array();
-  const encodedLen  = encoder.EncodeMeshToDracoBuffer(mesh, encodedData);
-  mod.destroy(mesh);
-  mod.destroy(encoder);
-
-  if (encodedLen === 0) { mod.destroy(encodedData); throw new Error('Draco encoding produjo 0 bytes'); }
-
-  const bytes = new Uint8Array(encodedLen);
-  for (let i = 0; i < encodedLen; i++) bytes[i] = encodedData.GetValue(i);
-  mod.destroy(encodedData);
-
-  return { bytes, attrIds };
-}
 
 // ─────────────────────────────────────────────────────────
 //  Main optimizer
 // ─────────────────────────────────────────────────────────
-async function optimizeGLB(buffer, { textureSize, jpegQuality, geoOpt, draco }) {
+async function optimizeGLB(buffer, { textureSize, jpegQuality, geoOpt }) {
   setProgress(15, 'Parseando GLB...', 'Extrayendo JSON y buffer binario');
   const { json, bin } = parseGLB(buffer);
   const binArray = bin ? new Uint8Array(bin) : new Uint8Array(0);
@@ -417,59 +275,7 @@ async function optimizeGLB(buffer, { textureSize, jpegQuality, geoOpt, draco }) 
     await new Promise(r => setTimeout(r, 0));
   }
 
-  // ── 2. Draco geometry compression ─────────────────────
-  const dracoPatches = new Map(); // pre-compact BV idx → Uint8Array
-
-  if (draco) {
-    setProgress(62, 'Cargando compresor Draco...', 'Descargando encoder (~500 KB)');
-    const mod = await loadDracoEncoder();
-
-    const allPrims = (json.meshes || []).flatMap(m => m.primitives || []);
-    const total    = allPrims.length;
-    let   done     = 0;
-
-    for (const mesh of (json.meshes || [])) {
-      for (const prim of (mesh.primitives || [])) {
-        done++;
-        if (prim.indices == null) continue;
-        if (json.accessors[prim.indices].bufferView == null) continue;
-        if (prim.extensions && prim.extensions.KHR_draco_mesh_compression) continue;
-
-        setProgress(
-          62 + Math.round(done / Math.max(total, 1) * 18),
-          `Draco: malla ${done} de ${total}`,
-          'Codificando geometría con compresión Draco'
-        );
-
-        try {
-          const { bytes, attrIds } = encodePrimitiveDraco(mod, json, prim, binArray);
-          const newBVIdx = json.bufferViews.length;
-          json.bufferViews.push({ buffer: 0, byteOffset: 0, byteLength: bytes.length });
-          dracoPatches.set(newBVIdx, bytes);
-
-          prim.extensions = prim.extensions || {};
-          prim.extensions.KHR_draco_mesh_compression = { bufferView: newBVIdx, attributes: attrIds };
-
-          // Remove bufferView refs — data now lives in the Draco buffer
-          delete json.accessors[prim.indices].bufferView;
-          delete json.accessors[prim.indices].byteOffset;
-          for (const accIdx of Object.values(prim.attributes)) {
-            delete json.accessors[accIdx].bufferView;
-            delete json.accessors[accIdx].byteOffset;
-          }
-        } catch (e) { console.warn('Draco omitido para primitiva:', e.message); }
-
-        await new Promise(r => setTimeout(r, 0));
-      }
-    }
-
-    if (dracoPatches.size > 0) {
-      json.extensionsUsed     = [...new Set([...(json.extensionsUsed     || []), 'KHR_draco_mesh_compression'])];
-      json.extensionsRequired = [...new Set([...(json.extensionsRequired || []), 'KHR_draco_mesh_compression'])];
-    }
-  }
-
-  // ── 3. Geometry cleanup ────────────────────────────────
+  // ── 2. Geometry cleanup ────────────────────────────────
   let remap = null;
   if (geoOpt) {
     setProgress(82, 'Optimizando geometría...', 'Eliminando datos huérfanos');
@@ -479,7 +285,7 @@ async function optimizeGLB(buffer, { textureSize, jpegQuality, geoOpt, draco }) 
     setProgress(87, 'Geometría lista', `${result.removed} bufferView(s) eliminados`);
   }
 
-  // ── 4. Build patches (post-compact indices) ────────────
+  // ── 3. Build patches (post-compact indices) ────────────
   const patches = new Map();
 
   for (let i = 0; i < imgs.length; i++) {
@@ -487,12 +293,7 @@ async function optimizeGLB(buffer, { textureSize, jpegQuality, geoOpt, draco }) 
       patches.set(json.images[i].bufferView, imgNew[i]);
   }
 
-  for (const [oldIdx, data] of dracoPatches) {
-    const newIdx = remap ? remap.get(oldIdx) : oldIdx;
-    if (newIdx != null) patches.set(newIdx, data);
-  }
-
-  // ── 5. Rebuild & pack ──────────────────────────────────
+  // ── 4. Rebuild & pack ──────────────────────────────────
   setProgress(92, 'Reconstruyendo buffer...', 'Empaquetando datos optimizados');
   const newBin = rebuildBin(json, bin, patches);
 
