@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AR Optimizer Pro — LookiAR</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ── NAV ───────────────────────────────────────── -->
+<nav>
+  <a href="https://www.lookiar.com/" target="_blank" class="nav-logo">
+    <img src="https://www.lookiar.com/assets/lookiar-iso-268f05ba778b1c0e19e308ada48cad14e18e93a496ad689b0e6b64cf872e5033.svg"
+         alt="LookiAR"
+         onerror="this.style.display='none'">
+    <span class="nav-logo-text">LookiAR</span>
+  </a>
+  <div style="display:flex;align-items:center;gap:12px">
+    <span class="nav-badge">AR Optimizer Pro</span>
+    <div class="nav-right">
+<a href="https://www.lookiar.com/" target="_blank" class="nav-cta">PRUÉBALO GRATIS</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ── HERO ───────────────────────────────────────── -->
+<div class="hero">
+  <div class="tool-tag">Herramienta gratuita · WebAR</div>
+  <h1>Optimiza tu modelo <span>GLB</span><br>para Realidad Aumentada</h1>
+  <p>Comprime texturas, convierte a WebP y reduce el peso de tus modelos 3D directamente en el navegador — sin subir archivos a ningún servidor.</p>
+</div>
+
+<!-- ── MAIN ───────────────────────────────────────── -->
+<div class="wrap">
+
+  <!-- Settings -->
+  <div class="card">
+    <div class="card-title">Configuración de optimización</div>
+    <p style="font-size:.8rem;color:var(--text-muted);margin-bottom:14px">Resolución máxima de texturas de salida:</p>
+    <div class="tex-grid">
+      <div class="tex-opt" data-size="512">
+        <div class="sz">512×512</div>
+        <div class="ds">Ultra ligero<br>Ideal para WebAR</div>
+        <div class="tg">WebAR</div>
+      </div>
+      <div class="tex-opt sel" data-size="1024">
+        <div class="sz">1024×1024</div>
+        <div class="ds">Balance óptimo<br>Calidad / Peso</div>
+        <div class="tg">Recomendado</div>
+      </div>
+      <div class="tex-opt" data-size="2048">
+        <div class="sz">2048×2048</div>
+        <div class="ds">Alta calidad<br>Visual</div>
+        <div class="tg">Detallado</div>
+      </div>
+    </div>
+    <div style="margin-top:20px;border-top:1px solid var(--border);padding-top:18px">
+      <div class="srow">
+        <div class="slabel">
+          <span>Conversión WebP</span>
+          <small>Calidad de compresión de texturas</small>
+        </div>
+        <div class="slider-wrap">
+          <input type="range" id="webpSlider" min="10" max="100" step="5" value="80">
+          <div class="qval" id="webpVal">80%</div>
+        </div>
+      </div>
+      <div class="srow">
+        <div class="slabel">
+          <span>Optimización de geometría</span>
+          <small>Elimina datos huérfanos y bufferViews sin referencias</small>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="geoOpt" checked>
+          <span class="tslider"></span>
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <!-- Drop zone -->
+  <div class="dropzone" id="dropzone">
+    <input type="file" id="fileInput" accept=".glb">
+    <div class="dico">📦</div>
+    <h3>Arrastra tu archivo .GLB aquí</h3>
+    <p>o haz clic para seleccionar desde tu dispositivo</p>
+    <div class="hint">Tamaño máximo recomendado: 100 MB · Solo formato .glb</div>
+  </div>
+
+  <!-- Error -->
+  <div class="errmsg" id="errMsg"></div>
+
+  <!-- Status -->
+  <div class="card status-card" id="statusCard">
+    <div class="sth">
+      <div class="spin"></div>
+      <div>
+        <div class="sstep" id="sstep">Iniciando...</div>
+        <div class="stxt" id="stxt">Por favor espera</div>
+      </div>
+    </div>
+    <div class="pbar-wrap"><div class="pbar" id="pbar"></div></div>
+  </div>
+
+  <!-- Results -->
+  <div class="card res-card" id="resCard">
+    <div class="card-title">Optimización completada</div>
+    <div class="srow2">
+      <div class="sbox orig">
+        <div class="lbl">Tamaño original</div>
+        <div class="val" id="origSz">—</div>
+      </div>
+      <div class="arr">→</div>
+      <div class="sbox optm">
+        <div class="lbl">Tamaño optimizado</div>
+        <div class="val" id="optSz">—</div>
+      </div>
+    </div>
+    <div class="rbadge">
+      <div class="pct">
+        <span>↓</span><span id="redPct">0%</span><span>reducción en peso</span>
+      </div>
+    </div>
+    <button class="dlbtn" id="dlBtn">⬇&nbsp; Descargar GLB Optimizado</button>
+    <button class="rstbtn" id="rstBtn">Optimizar otro archivo</button>
+  </div>
+
+</div><!-- /wrap -->
+
+<!-- ── FOOTER ─────────────────────────────────────── -->
+<footer>
+  <div class="foot-inner">
+    <a href="https://www.lookiar.com/" target="_blank" class="foot-logo">
+      <img src="https://www.lookiar.com/assets/lookiar-iso-268f05ba778b1c0e19e308ada48cad14e18e93a496ad689b0e6b64cf872e5033.svg"
+           alt="LookiAR" onerror="this.style.display='none'">
+      <span>LookiAR</span>
+    </a>
+    <div class="foot-info">
+      Impulsa tus proyectos con Realidad Aumentada<br>
+      <a href="https://www.lookiar.com/" target="_blank">www.lookiar.com</a>
+      &nbsp;·&nbsp;Santiago, Chile
+    </div>
+  </div>
+  <p class="foot-note">
+    Herramienta gratuita de LookiAR · Procesamiento 100% local, tus archivos nunca abandonan tu dispositivo ·
+    © 2026 LookiAR
+  </p>
+</footer>
+
+<script src="script.js"></script>
+</body>
+</html>
