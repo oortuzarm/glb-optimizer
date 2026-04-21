@@ -317,9 +317,63 @@ footer{
   padding-top:14px;border-top:1px solid var(--border);
 }
 
+/* ── RESPONSIVE ────────────────────────────────────── */
+
+/* Tablet */
+@media(max-width:768px){
+  nav{padding:0 16px;height:56px}
+  .nav-logo img{height:26px}
+  .nav-logo-text{font-size:1.1rem}
+  .nav-badge{display:none}
+
+  .hero{padding:36px 16px 24px}
+  .hero p{font-size:.9rem}
+
+  .wrap{padding:0 12px 48px;gap:14px}
+  .card{padding:18px}
+
+  .tex-opt{padding:14px 10px}
+  .tex-opt .sz{font-size:1rem}
+
+  .slider-wrap input[type=range]{width:100px}
+
+  .dropzone{padding:40px 16px}
+  .dico{width:52px;height:52px;font-size:24px;margin-bottom:14px}
+
+  footer{padding:24px 16px}
+}
+
+/* Mobile */
 @media(max-width:520px){
+  .nav-cta{font-size:.72rem;padding:7px 13px}
+
+  .hero h1{font-size:1.7rem}
+  .hero p{font-size:.85rem}
+
   .tex-grid{grid-template-columns:1fr}
-  .srow2{grid-template-columns:1fr}
+
+  .srow{flex-wrap:wrap;gap:10px}
+  .slider-wrap{width:100%}
+  .slider-wrap input[type=range]{flex:1}
+
+  .srow2{grid-template-columns:1fr;gap:10px}
   .arr{display:none}
+
+  .dropzone{padding:32px 14px}
+  .dropzone h3{font-size:1rem}
+
+  .dlbtn{font-size:.88rem;padding:14px}
+
+  .foot-inner{flex-direction:column;align-items:flex-start;gap:12px}
   .foot-info{text-align:left}
+  .foot-note{text-align:left}
+}
+
+/* Very small (< 360px) */
+@media(max-width:360px){
+  .nav-logo-text{font-size:1rem}
+  .nav-cta{padding:6px 10px;font-size:.68rem}
+  .hero h1{font-size:1.5rem}
+  .card{padding:14px}
+  .tex-opt .sz{font-size:.95rem}
 }
