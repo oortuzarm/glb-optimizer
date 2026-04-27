@@ -12,7 +12,15 @@ let cachedIO = null;
 async function getIO() {
   if (cachedIO) return cachedIO;
 
-  // Resolve WASM files relative to the worker script's directory.
+  // Resolve WASM files relative to this worker script's directory.
+  //
+  // Emscripten calls locateFile(originalFilename) where originalFilename is
+  // whatever name was compiled into the JS wrapper (e.g. "draco_decoder.wasm"
+  // or "draco_decoder_gltf.wasm" depending on the draco3dgltf version).
+  //
+  // build.js copies the WASM files preserving their original names, so
+  // returning base + filename always resolves to the correct served file —
+  // no name mapping needed regardless of the draco3dgltf version.
   const base = new URL('./', self.location.href).href;
   const locateFile = (filename) => base + filename;
 
