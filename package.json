@@ -1,0 +1,17 @@
+{
+  "name": "glb-optimizer",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "node build.js"
+  },
+  "dependencies": {
+    "@gltf-transform/core": "^4.1.0",
+    "@gltf-transform/extensions": "^4.1.0",
+    "@gltf-transform/functions": "^4.1.0",
+    "draco3dgltf": "^1.5.7"
+  },
+  "devDependencies": {
+    "esbuild": "^0.21.5"
+  }
+}
