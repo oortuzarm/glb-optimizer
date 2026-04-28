@@ -176,23 +176,29 @@ nav{
 .toggle input:checked+.tslider::before{transform:translateX(21px)}
 
 /* ── PHOTO INTENSITY ───────────────────────────────── */
-.photo-int-group{display:flex;gap:4px}
+#photoIntensityRow{align-items:flex-start}
+.photo-int-group{display:flex;gap:6px;flex:1}
 .photo-int-btn{
+  flex:1;
   background:var(--bg-card2);
   border:1px solid var(--border);
   border-radius:6px;
-  color:var(--text-muted);
   font-family:'Inter',sans-serif;
-  font-size:.72rem;font-weight:600;
-  padding:5px 11px;cursor:pointer;
-  transition:all .2s;white-space:nowrap;
+  padding:9px 8px;cursor:pointer;
+  transition:all .2s;
+  display:flex;flex-direction:column;
+  align-items:center;text-align:center;gap:4px;
 }
-.photo-int-btn:hover{border-color:var(--brand);color:var(--text)}
-.photo-int-btn.sel{
-  background:var(--brand-dim);
-  border-color:var(--brand);
-  color:var(--brand);
+.photo-int-btn:hover{border-color:var(--brand)}
+.photo-int-btn.sel{background:var(--brand-dim);border-color:var(--brand)}
+.pib-name{font-size:.72rem;font-weight:600;color:var(--text-muted);transition:color .2s}
+.photo-int-btn:hover .pib-name{color:var(--text)}
+.photo-int-btn.sel .pib-name{color:var(--brand)}
+.pib-desc{
+  font-size:.62rem;font-weight:400;
+  color:var(--text-muted);line-height:1.4;opacity:.75;
 }
+.photo-int-btn.sel .pib-desc{color:rgba(41,171,226,.7);opacity:1}
 
 /* ── DROP ZONE ─────────────────────────────────────── */
 .dropzone{
