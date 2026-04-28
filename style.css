@@ -175,6 +175,25 @@ nav{
 .toggle input:checked+.tslider{background:var(--brand);border-color:var(--brand)}
 .toggle input:checked+.tslider::before{transform:translateX(21px)}
 
+/* ── PHOTO INTENSITY ───────────────────────────────── */
+.photo-int-group{display:flex;gap:4px}
+.photo-int-btn{
+  background:var(--bg-card2);
+  border:1px solid var(--border);
+  border-radius:6px;
+  color:var(--text-muted);
+  font-family:'Inter',sans-serif;
+  font-size:.72rem;font-weight:600;
+  padding:5px 11px;cursor:pointer;
+  transition:all .2s;white-space:nowrap;
+}
+.photo-int-btn:hover{border-color:var(--brand);color:var(--text)}
+.photo-int-btn.sel{
+  background:var(--brand-dim);
+  border-color:var(--brand);
+  color:var(--brand);
+}
+
 /* ── DROP ZONE ─────────────────────────────────────── */
 .dropzone{
   background:var(--bg-card);

@@ -3,7 +3,8 @@
 // ─────────────────────────────────────────────────────────
 //  State
 // ─────────────────────────────────────────────────────────
-let selectedSize  = 1024;
+let selectedSize       = 1024;
+let selectedPhotoLevel = 'balanced';
 let optimizedBuf  = null;
 let origFileName  = '';
 let originalBuf   = null;
@@ -36,8 +37,22 @@ document.querySelectorAll('.tex-opt').forEach(el => {
   });
 });
 
-['dracoEnabled', 'photogrammetryMode'].forEach(id => {
-  $(id).addEventListener('change', () => { if (originalBuf) runOptimization(); });
+$('dracoEnabled').addEventListener('change', () => {
+  if (originalBuf) runOptimization();
+});
+
+$('photogrammetryMode').addEventListener('change', () => {
+  $('photoIntensityRow').style.display = $('photogrammetryMode').checked ? '' : 'none';
+  if (originalBuf) runOptimization();
+});
+
+document.querySelectorAll('.photo-int-btn').forEach(el => {
+  el.addEventListener('click', () => {
+    document.querySelectorAll('.photo-int-btn').forEach(e => e.classList.remove('sel'));
+    el.classList.add('sel');
+    selectedPhotoLevel = el.dataset.level;
+    if (originalBuf && $('photogrammetryMode').checked) runOptimization();
+  });
 });
 
 // ─────────────────────────────────────────────────────────
@@ -291,7 +306,7 @@ function spawnPhotoWorker(buffer, myRunId) {
   };
 
   const bufCopy = buffer.slice(0);
-  currentWorker.postMessage({ type: 'reduce', buffer: bufCopy }, [bufCopy]);
+  currentWorker.postMessage({ type: 'reduce', buffer: bufCopy, level: selectedPhotoLevel }, [bufCopy]);
 }
 
 // ─────────────────────────────────────────────────────────

@@ -13318,14 +13318,21 @@
     }
     return Math.round(total);
   }
-  function targetRatio(triangles) {
-    if (triangles > 1e6) return 25e4 / triangles;
-    if (triangles > 5e5) return 2e5 / triangles;
-    if (triangles > 3e5) return 15e4 / triangles;
+  var LEVEL_TARGETS = {
+    conservative: [[1e6, 7e5], [5e5, 5e5], [3e5, 3e5]],
+    balanced: [[1e6, 5e5], [5e5, 35e4], [3e5, 25e4]],
+    aggressive: [[1e6, 25e4], [5e5, 2e5], [3e5, 15e4]]
+  };
+  var LEVEL_ERROR = { conservative: 1e-3, balanced: 2e-3, aggressive: 5e-3 };
+  function targetRatio(triangles, level) {
+    const tiers = LEVEL_TARGETS[level] || LEVEL_TARGETS.balanced;
+    for (const [min, target] of tiers) {
+      if (triangles > min) return target / triangles;
+    }
     return null;
   }
   self.onmessage = async (e) => {
-    const { type, buffer } = e.data;
+    const { type, buffer, level = "balanced" } = e.data;
     if (type !== "reduce") return;
     try {
       progress(5, "Iniciando simplificaci\xF3n...", "Cargando m\xF3dulo WASM de meshoptimizer");
@@ -13334,7 +13341,7 @@
       progress(15, "Analizando modelo...", "Parseando estructura del GLB");
       const doc = await io.readBinary(new Uint8Array(buffer));
       const triangles = countTriangles(doc);
-      const ratio = targetRatio(triangles);
+      const ratio = targetRatio(triangles, level);
       if (ratio === null) {
         progress(
           88,
@@ -13347,6 +13354,7 @@
         return;
       }
       const targetK = Math.round(triangles * ratio / 1e3);
+      const geoError = LEVEL_ERROR[level] ?? 2e-3;
       progress(
         30,
         "Soldando v\xE9rtices...",
@@ -13359,7 +13367,7 @@
         `Simplificando a ~${targetK}k tri\xE1ngulos`
       );
       await doc.transform(
-        simplify({ simplifier: MeshoptSimplifier, ratio, error: 2e-3 })
+        simplify({ simplifier: MeshoptSimplifier, ratio, error: geoError })
       );
       progress(75, "Limpiando geometr\xEDa...", "Eliminando datos no utilizados");
       await doc.transform(prune());

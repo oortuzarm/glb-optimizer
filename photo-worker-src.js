@@ -27,16 +27,25 @@ function countTriangles(doc) {
   return Math.round(total);
 }
 
+// Triangle targets and geometric error tolerance per intensity level.
+const LEVEL_TARGETS = {
+  conservative: [[1_000_000, 700_000], [500_000, 500_000], [300_000, 300_000]],
+  balanced:     [[1_000_000, 500_000], [500_000, 350_000], [300_000, 250_000]],
+  aggressive:   [[1_000_000, 250_000], [500_000, 200_000], [300_000, 150_000]],
+};
+const LEVEL_ERROR = { conservative: 0.001, balanced: 0.002, aggressive: 0.005 };
+
 // Returns the fraction of vertices to keep, or null if no reduction is needed.
-function targetRatio(triangles) {
-  if (triangles > 1_000_000) return 250_000 / triangles;
-  if (triangles >   500_000) return 200_000 / triangles;
-  if (triangles >   300_000) return 150_000 / triangles;
+function targetRatio(triangles, level) {
+  const tiers = LEVEL_TARGETS[level] || LEVEL_TARGETS.balanced;
+  for (const [min, target] of tiers) {
+    if (triangles > min) return target / triangles;
+  }
   return null;
 }
 
 self.onmessage = async (e) => {
-  const { type, buffer } = e.data;
+  const { type, buffer, level = 'balanced' } = e.data;
   if (type !== 'reduce') return;
 
   try {
@@ -49,7 +58,7 @@ self.onmessage = async (e) => {
     const doc = await io.readBinary(new Uint8Array(buffer));
 
     const triangles = countTriangles(doc);
-    const ratio = targetRatio(triangles);
+    const ratio = targetRatio(triangles, level);
 
     if (ratio === null) {
       // Model already within AR budget — pass through unchanged.
@@ -62,6 +71,7 @@ self.onmessage = async (e) => {
     }
 
     const targetK = Math.round(triangles * ratio / 1000);
+    const geoError = LEVEL_ERROR[level] ?? 0.002;
 
     progress(30, 'Soldando vértices...',
       `${(triangles / 1000).toFixed(0)}k triángulos detectados · preparando malla`);
@@ -70,7 +80,7 @@ self.onmessage = async (e) => {
     progress(52, 'Reduciendo polígonos...',
       `Simplificando a ~${targetK}k triángulos`);
     await doc.transform(
-      simplify({ simplifier: MeshoptSimplifier, ratio, error: 0.002 })
+      simplify({ simplifier: MeshoptSimplifier, ratio, error: geoError })
     );
 
     progress(75, 'Limpiando geometría...', 'Eliminando datos no utilizados');
