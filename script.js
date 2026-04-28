@@ -36,6 +36,10 @@ document.querySelectorAll('.tex-opt').forEach(el => {
   });
 });
 
+['dracoEnabled', 'photogrammetryMode'].forEach(id => {
+  $(id).addEventListener('change', () => { if (originalBuf) runOptimization(); });
+});
+
 // ─────────────────────────────────────────────────────────
 //  Drop zone
 // ─────────────────────────────────────────────────────────
@@ -199,12 +203,12 @@ function finalize(buffer, dracoWasActive) {
 }
 
 // ─────────────────────────────────────────────────────────
-//  Phase 2 — Draco worker
+//  Phase — Draco worker
 // ─────────────────────────────────────────────────────────
-function spawnDracoWorker(buffer, myRunId) {
+function spawnDracoWorker(buffer, myRunId, startPct = 56) {
   if (myRunId !== runId) return;
 
-  setProgress(56, 'Preparando Draco...', 'Cargando módulo de compresión WASM');
+  setProgress(startPct, 'Preparando Draco...', 'Cargando módulo de compresión WASM');
   currentWorker = new Worker('draco-worker.bundle.js');
 
   currentWorker.onmessage = (e) => {
@@ -212,8 +216,7 @@ function spawnDracoWorker(buffer, myRunId) {
     const msg = e.data;
 
     if (msg.type === 'progress') {
-      // Scale Draco progress (0–100) into the 56–100% range
-      setProgress(56 + Math.round((msg.pct / 100) * 44), msg.step, msg.txt);
+      setProgress(startPct + Math.round((msg.pct / 100) * (100 - startPct)), msg.step, msg.txt);
 
     } else if (msg.type === 'done') {
       currentWorker = null;
@@ -232,7 +235,6 @@ function spawnDracoWorker(buffer, myRunId) {
     if (myRunId !== runId) return;
     currentWorker = null;
     console.error('Draco worker error:', e);
-    // Likely cause: draco-worker.bundle.js not found (npm run build not executed yet)
     onFatalError(
       'No se pudo cargar el módulo Draco. ' +
       'Asegúrate de haber ejecutado "npm run build" y de que draco-worker.bundle.js esté disponible.'
@@ -244,12 +246,64 @@ function spawnDracoWorker(buffer, myRunId) {
 }
 
 // ─────────────────────────────────────────────────────────
+//  Phase — Photogrammetry reduction worker
+// ─────────────────────────────────────────────────────────
+function spawnPhotoWorker(buffer, myRunId) {
+  if (myRunId !== runId) return;
+  const dracoActive = $('dracoEnabled').checked;
+
+  setProgress(34, 'Preparando fotogrametría...', 'Cargando módulo de simplificación WASM');
+  currentWorker = new Worker('photo-worker.bundle.js');
+
+  currentWorker.onmessage = (e) => {
+    if (myRunId !== runId) return;
+    const msg = e.data;
+
+    if (msg.type === 'progress') {
+      // With Draco: scale into 34–66%; without: scale into 46–100%
+      const pct = dracoActive
+        ? Math.round(34 + (msg.pct / 100) * 32)
+        : Math.round(46 + (msg.pct / 100) * 54);
+      setProgress(pct, msg.step, msg.txt);
+
+    } else if (msg.type === 'done') {
+      currentWorker = null;
+      if (dracoActive) {
+        spawnDracoWorker(msg.buffer, myRunId, 67);
+      } else {
+        finalize(msg.buffer, false);
+      }
+
+    } else if (msg.type === 'error') {
+      currentWorker = null;
+      onFatalError('Error en reducción de fotogrametría: ' + msg.message);
+    }
+  };
+
+  currentWorker.onerror = (e) => {
+    if (myRunId !== runId) return;
+    currentWorker = null;
+    console.error('Photo worker error:', e);
+    onFatalError(
+      'No se pudo cargar el módulo de fotogrametría. ' +
+      'Asegúrate de haber ejecutado "npm run build" y de que photo-worker.bundle.js esté disponible.'
+    );
+  };
+
+  const bufCopy = buffer.slice(0);
+  currentWorker.postMessage({ type: 'reduce', buffer: bufCopy }, [bufCopy]);
+}
+
+// ─────────────────────────────────────────────────────────
 //  Phase 1 — Texture + geometry optimizer worker
 // ─────────────────────────────────────────────────────────
 function runOptimization() {
   terminateWorker();
   const myRunId    = ++runId;
   const dracoActive = $('dracoEnabled').checked;
+  const photoActive = $('photogrammetryMode').checked;
+  // Photogrammetry mode caps texture size at 1024 to stay within AR budgets.
+  const effectiveTextureSize = photoActive && selectedSize > 1024 ? 1024 : selectedSize;
 
   dropzone.style.display = 'none';
   resCard.classList.remove('vis');
@@ -264,16 +318,26 @@ function runOptimization() {
     const msg = e.data;
 
     if (msg.type === 'progress') {
-      // With Draco: scale phase-1 progress (0–100) into 3–55% range.
-      // Without Draco: pass through as-is.
-      const pct = dracoActive
-        ? Math.round(3 + (msg.pct / 100) * 52)
-        : msg.pct;
+      // Scale phase-1 progress to reserve room for subsequent phases:
+      //   photo+draco → 3–33%   photo only → 3–45%
+      //   draco only  → 3–55%   none       → pass-through
+      let pct;
+      if (photoActive && dracoActive) {
+        pct = Math.round(3 + (msg.pct / 100) * 30);
+      } else if (dracoActive) {
+        pct = Math.round(3 + (msg.pct / 100) * 52);
+      } else if (photoActive) {
+        pct = Math.round(3 + (msg.pct / 100) * 42);
+      } else {
+        pct = msg.pct;
+      }
       setProgress(pct, msg.step, msg.txt);
 
     } else if (msg.type === 'done') {
       currentWorker = null;
-      if (dracoActive) {
+      if (photoActive) {
+        spawnPhotoWorker(msg.buffer, myRunId);
+      } else if (dracoActive) {
         spawnDracoWorker(msg.buffer, myRunId);
       } else {
         finalize(msg.buffer, false);
@@ -299,7 +363,7 @@ function runOptimization() {
       type: 'optimize',
       buffer: bufCopy,
       options: {
-        textureSize: selectedSize,
+        textureSize: effectiveTextureSize,
         jpegQuality: +$('jpegSlider').value / 100,
         geoOpt:      $('geoOpt').checked,
       },

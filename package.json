@@ -9,7 +9,8 @@
     "@gltf-transform/core": "^4.1.0",
     "@gltf-transform/extensions": "^4.1.0",
     "@gltf-transform/functions": "^4.1.0",
-    "draco3dgltf": "^1.5.7"
+    "draco3dgltf": "^1.5.7",
+    "meshoptimizer": "^0.22.0"
   },
   "devDependencies": {
     "esbuild": "^0.21.5"

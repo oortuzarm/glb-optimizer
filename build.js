@@ -145,11 +145,10 @@ const decoderWasm = findAndCopy(
   'decoder'
 );
 
-// ── Step 2: Bundle draco-worker-src.js ───────────────────
-console.log('\n─── Bundleando draco-worker-src.js ──────────────────');
+// ── Step 2: Bundle workers (parallel) ────────────────────
+console.log('\n─── Bundleando workers ──────────────────────────────');
 
-esbuild.build({
-  entryPoints:   [path.join(ROOT, 'draco-worker-src.js')],
+const sharedBuildCfg = {
   bundle:        true,
   format:        'iife',
   platform:      'browser',
@@ -167,15 +166,27 @@ esbuild.build({
   mainFields:    ['browser', 'module', 'main'],
   conditions:    ['browser'],
   absWorkingDir: ROOT,
-  outfile:       path.join(ROOT, 'draco-worker.bundle.js'),
   logLevel:      'warning',
-})
+};
+
+Promise.all([
+  esbuild.build({
+    ...sharedBuildCfg,
+    entryPoints: [path.join(ROOT, 'draco-worker-src.js')],
+    outfile:     path.join(ROOT, 'draco-worker.bundle.js'),
+  }),
+  esbuild.build({
+    ...sharedBuildCfg,
+    entryPoints: [path.join(ROOT, 'photo-worker-src.js')],
+    outfile:     path.join(ROOT, 'photo-worker.bundle.js'),
+  }),
+])
 .then(() => {
 
   // ── Step 3: Post-build validation ──────────────────────
   console.log('\n─── Validando archivos de salida ────────────────────');
 
-  const required = ['draco-worker.bundle.js', encoderWasm, decoderWasm];
+  const required = ['draco-worker.bundle.js', 'photo-worker.bundle.js', encoderWasm, decoderWasm];
   let allOk = true;
 
   for (const filename of required) {
@@ -192,15 +203,16 @@ esbuild.build({
     die('Build incompleto — uno o más archivos de salida no fueron generados.');
   }
 
-  // Sanity-check: bundle must NOT contain unresolved Node.js module references.
-  const bundlePath = path.join(ROOT, 'draco-worker.bundle.js');
-  const bundleContent = fs.readFileSync(bundlePath, 'utf8');
+  // Sanity-check: no bundle should contain unresolved Node.js module references.
   const nodeModulePattern = /require\(["'](fs|path|crypto|os|util)["']\)/;
-  if (nodeModulePattern.test(bundleContent)) {
-    die(
-      'El bundle generado contiene referencias a módulos Node.js sin resolver.\n' +
-      'Revisa el plugin nodeCompatPlugin en build.js.'
-    );
+  for (const bundle of ['draco-worker.bundle.js', 'photo-worker.bundle.js']) {
+    const bundleContent = fs.readFileSync(path.join(ROOT, bundle), 'utf8');
+    if (nodeModulePattern.test(bundleContent)) {
+      die(
+        `El bundle ${bundle} contiene referencias a módulos Node.js sin resolver.\n` +
+        'Revisa el plugin nodeCompatPlugin en build.js.'
+      );
+    }
   }
 
   console.log('\n✓  Build completado exitosamente.\n');
