@@ -29,7 +29,7 @@ function countTriangles(doc) {
 
 // Triangle targets and geometric error tolerance per intensity level.
 const LEVEL_TARGETS = {
-  conservative: [[1_000_000, 900_000], [500_000, 700_000], [300_000, 400_000]],
+  conservative: [[1_000_000, 950_000], [500_000, 800_000], [300_000, 450_000]],
   balanced:     [[1_000_000, 500_000], [500_000, 350_000], [300_000, 250_000]],
   aggressive:   [[1_000_000, 250_000], [500_000, 200_000], [300_000, 150_000]],
 };
