@@ -292,6 +292,16 @@ nav{
 }
 .errmsg.vis{display:block}
 
+/* ── WARNING ───────────────────────────────────────── */
+.warnmsg{
+  display:none;
+  background:rgba(251,191,36,.08);
+  border:1px solid rgba(251,191,36,.3);
+  color:#fbbf24;padding:13px 16px;
+  border-radius:10px;font-size:.84rem;
+}
+.warnmsg.vis{display:block}
+
 /* ── FOOTER ────────────────────────────────────────── */
 footer{
   border-top:1px solid var(--border);
