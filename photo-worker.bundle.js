@@ -13319,7 +13319,7 @@
     return Math.round(total);
   }
   var LEVEL_TARGETS = {
-    conservative: [[1e6, 95e4], [5e5, 8e5], [3e5, 45e4]],
+    conservative: [[1e6, 975e3], [5e5, 85e4], [3e5, 475e3]],
     balanced: [[1e6, 5e5], [5e5, 35e4], [3e5, 25e4]],
     aggressive: [[1e6, 25e4], [5e5, 2e5], [3e5, 15e4]]
   };
