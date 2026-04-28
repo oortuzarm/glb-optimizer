@@ -19,7 +19,6 @@ const fileInput  = $('fileInput');
 const statusCard = $('statusCard');
 const resCard    = $('resCard');
 const errMsg     = $('errMsg');
-const warnMsg    = $('warnMsg');
 
 // ─────────────────────────────────────────────────────────
 //  Settings listeners
@@ -82,7 +81,6 @@ function reset() {
   resCard.classList.remove('vis');
   statusCard.classList.remove('vis');
   errMsg.classList.remove('vis');
-  warnMsg.classList.remove('vis');
   dropzone.style.display = '';
 }
 
@@ -98,11 +96,6 @@ function setProgress(pct, step, txt) {
 function showErr(msg) {
   errMsg.textContent = msg;
   errMsg.classList.add('vis');
-}
-
-function showWarn(msg) {
-  warnMsg.textContent = msg;
-  warnMsg.classList.add('vis');
 }
 
 function fmtBytes(b) {
@@ -132,11 +125,6 @@ function validateFile(file) {
   return null;
 }
 
-function warnFile(file) {
-  if (file.size > 100 * 1024 * 1024)
-    return 'Este archivo es más pesado de lo recomendado. Puede afectar el rendimiento en dispositivos móviles.';
-  return null;
-}
 
 // ─────────────────────────────────────────────────────────
 //  GLB output validation
@@ -169,11 +157,8 @@ function validateGLBOutput(buffer, dracoWasActive) {
 // ─────────────────────────────────────────────────────────
 async function processFile(file) {
   errMsg.classList.remove('vis');
-  warnMsg.classList.remove('vis');
   const err = validateFile(file);
   if (err) { showErr(err); return; }
-  const warn = warnFile(file);
-  if (warn) showWarn(warn);
   origFileName = file.name;
   originalBuf  = await file.arrayBuffer();
   runOptimization();
