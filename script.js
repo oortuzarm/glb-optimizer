@@ -36,10 +36,6 @@ document.querySelectorAll('.tex-opt').forEach(el => {
   });
 });
 
-$('dracoEnabled').addEventListener('change', () => {
-  if (originalBuf) runOptimization();
-});
-
 // ─────────────────────────────────────────────────────────
 //  Drop zone
 // ─────────────────────────────────────────────────────────
