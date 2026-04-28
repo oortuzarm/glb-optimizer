@@ -176,15 +176,15 @@ nav{
 .toggle input:checked+.tslider::before{transform:translateX(21px)}
 
 /* ── PHOTO INTENSITY ───────────────────────────────── */
-#photoIntensityRow{align-items:flex-start}
-.photo-int-group{display:flex;gap:6px;flex:1}
+#photoIntensityRow{flex-direction:column;align-items:stretch;gap:14px}
+.photo-int-group{display:flex;gap:6px}
 .photo-int-btn{
   flex:1;
   background:var(--bg-card2);
   border:1px solid var(--border);
   border-radius:6px;
   font-family:'Inter',sans-serif;
-  padding:9px 8px;cursor:pointer;
+  padding:7px 8px;cursor:pointer;
   transition:all .2s;
   display:flex;flex-direction:column;
   align-items:center;text-align:center;gap:4px;
