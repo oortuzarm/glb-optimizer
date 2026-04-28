@@ -29,11 +29,11 @@ function countTriangles(doc) {
 
 // Triangle targets and geometric error tolerance per intensity level.
 const LEVEL_TARGETS = {
-  conservative: [[1_000_000, 800_000], [500_000, 600_000], [300_000, 350_000]],
+  conservative: [[1_000_000, 900_000], [500_000, 700_000], [300_000, 400_000]],
   balanced:     [[1_000_000, 500_000], [500_000, 350_000], [300_000, 250_000]],
   aggressive:   [[1_000_000, 250_000], [500_000, 200_000], [300_000, 150_000]],
 };
-const LEVEL_ERROR = { conservative: 0.001, balanced: 0.002, aggressive: 0.005 };
+const LEVEL_ERROR = { conservative: 0.0003, balanced: 0.002, aggressive: 0.005 };
 
 // Returns the fraction of vertices to keep, or null if no reduction is needed.
 function targetRatio(triangles, level) {

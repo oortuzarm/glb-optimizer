@@ -13319,11 +13319,11 @@
     return Math.round(total);
   }
   var LEVEL_TARGETS = {
-    conservative: [[1e6, 8e5], [5e5, 6e5], [3e5, 35e4]],
+    conservative: [[1e6, 9e5], [5e5, 7e5], [3e5, 4e5]],
     balanced: [[1e6, 5e5], [5e5, 35e4], [3e5, 25e4]],
     aggressive: [[1e6, 25e4], [5e5, 2e5], [3e5, 15e4]]
   };
-  var LEVEL_ERROR = { conservative: 1e-3, balanced: 2e-3, aggressive: 5e-3 };
+  var LEVEL_ERROR = { conservative: 3e-4, balanced: 2e-3, aggressive: 5e-3 };
   function targetRatio(triangles, level) {
     const tiers = LEVEL_TARGETS[level] || LEVEL_TARGETS.balanced;
     for (const [min, target] of tiers) {
